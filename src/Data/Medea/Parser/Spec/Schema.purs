@@ -6,14 +6,15 @@ module Data.Medea.Parser.Spec.Schema
   ) where
 
 import MedeaPrelude
+
 import Data.Medea.Parser.Permutation (runPermutation, toPermutationWithDefault)
-import Data.Medea.Parser.Types (MedeaParser)
 import Data.Medea.Parser.Primitive (Identifier, ReservedIdentifier(..), parseKeyVal, parseIdentifier, parseLine)
 import Data.Medea.Parser.Spec.Array as Array
 import Data.Medea.Parser.Spec.Object as Object
-import Data.Medea.Parser.Spec.Type as Type
 import Data.Medea.Parser.Spec.String as String
-import Text.Parsing.Parser.Combinators (try)
+import Data.Medea.Parser.Spec.Type as Type
+import Data.Medea.Parser.Types (MedeaParser)
+import Parsing.Combinators (try)
 
 data Specification
   = Specification

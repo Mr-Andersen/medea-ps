@@ -5,14 +5,15 @@ module Data.Medea.Loader
   ) where
 
 import MedeaPrelude
+
 import Control.Monad.Error.Class (class MonadError, throwError)
 import Control.Monad.Except (runExcept)
-import Data.Medea.Schema (Schema(..))
 import Data.Medea.Analysis (AnalysisError(..), compileSchemata)
 import Data.Medea.Parser.Spec.Schemata as Schemata
-import Text.Parsing.Parser (ParseError, runParser)
+import Data.Medea.Schema (Schema(..))
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile)
+import Parsing (ParseError, runParser)
 
 data LoaderError
   -- | The data provided wasn't UTF-8. 
