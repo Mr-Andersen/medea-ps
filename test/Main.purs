@@ -30,7 +30,7 @@ interpret spif = do
   go =
     foldPlan
       (\{ label, value } -> it label $ liftAff value)
-      (\label -> pure unit)
+      (\_label -> pure unit)
       (\{ label, value } -> describe label (go $ value))
       sequence_
 

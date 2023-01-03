@@ -6,12 +6,11 @@ import Control.Monad.Trans.Class (lift)
 import Data.Array.NonEmpty as NEA
 import Data.Argonaut (class EncodeJson, Json)
 import Data.Argonaut as Arg
-import Data.Argonaut.Arbitrary (ObjGenOpts(..), RandomJson(..), arbitraryObj, genArrayJson, genJson)
+import Data.Argonaut.Arbitrary (ObjGenOpts(..), RandomJson, arbitraryObj, genArrayJson, genJson)
 import Data.Medea (validate)
 import Data.Medea.Loader (loadSchemaFromFile, LoaderError)
 import Data.Medea.Schema (Schema)
-import Data.Newtype (wrap)
-import Data.NonEmpty (NonEmpty, (:|), fromNonEmpty)
+import Data.NonEmpty (NonEmpty, (:|))
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Foreign.Object as Obj
@@ -23,7 +22,6 @@ import Test.QuickCheck.Gen as Gen
 import TestM (TestPlanM, isParseError, isSchemaError, runTestM, appendPath)
 import Unsafe.Coerce (unsafeCoerce)
 import Test.Spec.Assertions (shouldNotSatisfy, fail)
-import Debug (spy)
 
 arrayFromNonEmptyArray :: NonEmpty Array String -> Array String
 arrayFromNonEmptyArray (a :| as) = a:as
@@ -318,7 +316,7 @@ testWrap name fp eitherTests tests = do
     $ do
         eitherTests result
         case result of
-          Left e -> test ("Not Left file: " <> fp) (fail "unexpected Left")
+          Left _ -> test ("Not Left file: " <> fp) (fail "unexpected Left")
           Right scm -> do
             tests scm
 
@@ -350,7 +348,7 @@ testInvalidObject (ObjTestParams { objTestOpts, objTestPath, objTestPred }) =
         test ("Should not validate" <> ": " <> objTestPath) (propertyTest $ validationFail (arbitraryObj objTestOpts) objTestPred scm)
 
 testList :: ListTestParams -> TestPlanM Unit
-testList (ListTestParams { listTestOpts: (Tuple r1 r2), listTestPath, elementPred, lenPred }) =
+testList (ListTestParams { listTestOpts: (Tuple _r1 _r2), listTestPath, elementPred, lenPred }) =
   testWrap' "ListTest" listTestPath
     ( \scm -> do
         test ("should validate lists: " <> listTestPath) (propertyTest $ validationSuccess genArrayJson p scm)
@@ -360,7 +358,7 @@ testList (ListTestParams { listTestOpts: (Tuple r1 r2), listTestPath, elementPre
   p arr = (all elementPred arr) && (lenPred arr)
 
 testTuple :: TupleTestParams -> TestPlanM Unit
-testTuple (TupleTestParams { tupleTestOpts: (Tuple r1 r2), tupleTestPath, tuplePreds }) =
+testTuple (TupleTestParams { tupleTestOpts: (Tuple _r1 _r2), tupleTestPath, tuplePreds }) =
   testWrap' "TupleTest" tupleTestPath
     ( \scm -> do
         test ("should validate valid tuples: " <> tupleTestPath) (propertyTest $ validationSuccess genArrayJson p scm)
@@ -419,8 +417,6 @@ testAny fp name =
     ( \scm -> do
         test ("should validate anything: " <> fp) (propertyTest $ validationSuccess genJson (const true) scm)
     )
-  where
-  go scm (RandomJson j) = isRight $ runExcept <<< validate scm <<< Arg.stringify $ j
 
 testSingular :: String -> String -> (Json -> Boolean) -> TestPlanM Unit
 testSingular fp name p =
