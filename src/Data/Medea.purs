@@ -18,7 +18,6 @@ import Data.HashMap as HM
 import Data.Map as Map
 import Data.Medea.Analysis (TypeNode(..), CompiledSchema(..), ArrayType(..))
 import Data.Medea.JSONType (JSONType, typeOf)
---, loadSchemaFromFile, loadSchemaFromHandle)
 import Data.Medea.MedeaJSON (MJSON(..))
 import Data.Medea.Parser.Primitive (Identifier(..), ReservedIdentifier(..), identFromReserved)
 import Data.Medea.Schema (Schema)
@@ -155,7 +154,7 @@ validate scm str = case decode str of
 validateFromFile :: forall m. MonadPlus m => MonadError ValidationError m => MonadAff m => Schema -> String -> m ValidatedJSON
 validateFromFile scm fp = do
   contents <- liftAff $ readTextFile UTF8 fp
-  validate scm fp
+  validate scm contents
 
 -- validateFromHandle not implmented here because the ps node filesystem implementation doesn't really deal with raw handles
 checkTypes :: forall m. Alternative m => MonadReader Schema m => MonadState (Tuple (NonEmpty Set TypeNode) (Maybe Identifier)) m => MonadError ValidationError m => Json -> m (Cofree ValidJSONF SchemaInformation)
@@ -179,7 +178,7 @@ checkPrim v = do
     $ do
         throwError $ NotOneOfOptions $ v
   caseJson
-    (\null -> pure $ NullSchema :< NullF)
+    (\_null -> pure $ NullSchema :< NullF)
     (\bool -> pure $ BooleanSchema :< BooleanF bool)
     (\num -> pure $ NumberSchema :< NumberF num)
     ( \str -> do
@@ -189,7 +188,7 @@ checkPrim v = do
         case par of
           Nothing -> validated
           Just parIdent -> do
-            scm@(CompiledSchema cs) <- lookupSchema parIdent
+            CompiledSchema cs <- lookupSchema parIdent
             let
               validVals = cs.stringVals
             if (str `elem` validVals || null validVals) then do
@@ -271,7 +270,7 @@ compareMaybe :: (Int -> Int -> Boolean) -> Int -> Maybe Natural -> Boolean
 compareMaybe f i mn = maybe false (\n -> f i $ natToInt n) mn
 
 checkTupleLength :: forall m a e. MonadError e m => Array a -> e -> ArrayType -> m Unit
-checkTupleLength arr err (ListType _) = pure unit
+checkTupleLength _arr _err (ListType _) = pure unit
 
 checkTupleLength arr err (TupleType nodes) =
   if length nodes == length arr then
@@ -281,7 +280,7 @@ checkTupleLength arr err (TupleType nodes) =
 
 checkObject :: forall m. Alternative m => MonadReader Schema m => MonadState (Tuple (NonEmpty Set TypeNode) (Maybe Identifier)) m => MonadError ValidationError m => HashMap String Json -> Identifier -> m (Cofree ValidJSONF SchemaInformation)
 checkObject obj parIdent = do
-  schema@(CompiledSchema cs) <- lookupSchema parIdent
+  CompiledSchema _cs <- lookupSchema parIdent
   valsAndTypes <- pairPropertySchemaAndVal obj parIdent
   checkedObj <- traverse assess valsAndTypes
   pure $ ObjectSchema :< ObjectF checkedObj
@@ -297,7 +296,7 @@ pairPropertySchemaAndVal obj parIdent = do
   traverse_ isMatched $ (mapWithIndex Tuple (cs.props :: HashMap String (Tuple TypeNode Boolean)) :: HashMap String (Tuple String (Tuple TypeNode Boolean)))
   pure mappedObj
   where
-  pairProperty scm@(CompiledSchema cs) (Tuple propName j) 
+  pairProperty (CompiledSchema cs) (Tuple propName j)
     = case HM.lookup propName cs.props of
       Just (Tuple typeNode _) -> pure (Tuple j typeNode)
       Nothing
@@ -313,7 +312,7 @@ pairPropertySchemaAndVal obj parIdent = do
       $ do
           throwError <<< RequiredPropertyIsMissing (textify parIdent) $ propName
 
--- checkCustoms removes all nonCustom nodes from the typenode set and 
+-- checkCustoms removes all nonCustom nodes from the typenode set and
 -- checks the value against each until one succeeds
 checkCustoms :: forall m. Alternative m => MonadReader Schema m => MonadState (Tuple (NonEmpty Set TypeNode) (Maybe Identifier)) m => MonadError ValidationError m => Json -> m (Cofree ValidJSONF SchemaInformation)
 checkCustoms v = do
@@ -328,7 +327,7 @@ checkCustoms v = do
   -- we need to turn the set into an array here as Sets are not functors in PS
   asum <<< map checkCustom $ customNodeArr
   where
-  checkCustom node@(CustomNode ident) = do
+  checkCustom (CustomNode ident) = do
     (CompiledSchema cs) <- lookupSchema ident
     put (Tuple cs.typesAs (Just ident))
     (_ $> (UserDefined <<< textify $ ident)) <$> checkTypes v
